@@ -27,6 +27,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
@@ -45,6 +46,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -58,18 +60,29 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.core.content.ContextCompat
 import com.mapbox.maps.CameraOptions
+import com.mapbox.maps.extension.compose.MapEffect
 import com.mapbox.geojson.Point
 import com.mapbox.maps.MapboxExperimental
 import com.mapbox.maps.extension.compose.MapboxMap
 import com.mapbox.maps.extension.compose.animation.viewport.rememberMapViewportState
+import com.mapbox.maps.extension.style.layers.addLayer
+import com.mapbox.maps.extension.style.layers.generated.rasterLayer
+import com.mapbox.maps.extension.style.sources.addSource
+import com.mapbox.maps.extension.style.sources.generated.rasterSource
 import com.skydronex.fr24fortified.data.AppConfig
 import com.skydronex.fr24fortified.data.ConnectionChecker
 import com.skydronex.fr24fortified.data.ConnectionResult
 import com.skydronex.fr24fortified.data.DeviceType
+import com.skydronex.fr24fortified.data.map.RainViewerRepository
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import org.osmdroid.tileprovider.MapTileProviderBasic
+import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.MapTileIndex
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.TilesOverlay
 import kotlin.time.Duration.Companion.seconds
 
 private sealed class ConnectionStatus {
@@ -80,6 +93,9 @@ private sealed class ConnectionStatus {
 
 private val ColorOrange = Color(0xFFFBBF24)
 private val ColorGreen  = Color(0xFF34D399)
+private const val RainSourceId = "rainviewer-source"
+private const val RainLayerId = "rainviewer-layer"
+private const val RainMaxZoom = 7
 
 private data class UserLocation(
     val latitude: Double,
@@ -97,6 +113,10 @@ fun MapScreen(
 ) {
     var isFullscreen by rememberSaveable { mutableStateOf(false) }
     var isFollowingUser by rememberSaveable { mutableStateOf(false) }
+    var isRainLayerVisible by rememberSaveable { mutableStateOf(false) }
+    var rainTemplate by remember { mutableStateOf<String?>(null) }
+    val rainRepo = remember { RainViewerRepository() }
+    val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val userLocation = rememberUserLocation(isFollowingUser = isFollowingUser)
     val locationPermissionLauncher = rememberLauncherForActivityResult(
@@ -134,6 +154,31 @@ fun MapScreen(
         }
     }
 
+    fun onToggleRainLayer() {
+        if (isRainLayerVisible) {
+            isRainLayerVisible = false
+            return
+        }
+        if (rainTemplate != null) {
+            isRainLayerVisible = true
+            return
+        }
+
+        scope.launch {
+            val template = rainRepo.latestRadarTileTemplate()
+            if (template == null) {
+                Toast.makeText(
+                    context,
+                    "No se pudo cargar la capa de lluvia",
+                    Toast.LENGTH_SHORT
+                ).show()
+                return@launch
+            }
+            rainTemplate = template
+            isRainLayerVisible = true
+        }
+    }
+
     BackHandler {
         if (isFullscreen) isFullscreen = false else onBack()
     }
@@ -162,8 +207,28 @@ fun MapScreen(
             MapContent(
                 config = config,
                 isFollowingUser = isFollowingUser,
-                userLocation = userLocation
+                userLocation = userLocation,
+                isRainLayerVisible = isRainLayerVisible,
+                rainTemplate = rainTemplate
             )
+            IconButton(
+                onClick = ::onToggleRainLayer,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(16.dp)
+                    .zIndex(1f)
+                    .background(
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f),
+                        shape = CircleShape
+                    )
+            ) {
+                Icon(
+                    Icons.Default.Layers,
+                    contentDescription = if (isRainLayerVisible) "Ocultar capa de lluvia" else "Mostrar capa de lluvia",
+                    tint = if (isRainLayerVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
+            }
             IconButton(
                 onClick = ::onToggleFollowUser,
                 modifier = Modifier
@@ -240,6 +305,13 @@ fun MapScreen(
                         }
                     },
                     actions = {
+                        IconButton(onClick = ::onToggleRainLayer) {
+                            Icon(
+                                Icons.Default.Layers,
+                                contentDescription = if (isRainLayerVisible) "Ocultar capa de lluvia" else "Mostrar capa de lluvia",
+                                tint = if (isRainLayerVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                         IconButton(onClick = ::onToggleFollowUser) {
                             Icon(
                                 Icons.Default.MyLocation,
@@ -287,7 +359,9 @@ fun MapScreen(
                 MapContent(
                     config = config,
                     isFollowingUser = isFollowingUser,
-                    userLocation = userLocation
+                    userLocation = userLocation,
+                    isRainLayerVisible = isRainLayerVisible,
+                    rainTemplate = rainTemplate
                 )
             }
         }
@@ -298,18 +372,24 @@ fun MapScreen(
 private fun MapContent(
     config: AppConfig,
     isFollowingUser: Boolean,
-    userLocation: UserLocation?
+    userLocation: UserLocation?,
+    isRainLayerVisible: Boolean,
+    rainTemplate: String?
 ) {
     if (config.mapboxToken.isNotBlank()) {
         MapboxMapView(
             token = config.mapboxToken,
             isFollowingUser = isFollowingUser,
-            userLocation = userLocation
+            userLocation = userLocation,
+            isRainLayerVisible = isRainLayerVisible,
+            rainTemplate = rainTemplate
         )
     } else {
         OsmMapView(
             isFollowingUser = isFollowingUser,
-            userLocation = userLocation
+            userLocation = userLocation,
+            isRainLayerVisible = isRainLayerVisible,
+            rainTemplate = rainTemplate
         )
     }
 }
@@ -319,7 +399,9 @@ private fun MapContent(
 private fun MapboxMapView(
     token: String,
     isFollowingUser: Boolean,
-    userLocation: UserLocation?
+    userLocation: UserLocation?,
+    isRainLayerVisible: Boolean,
+    rainTemplate: String?
 ) {
     // Configurar el token público para Mapbox v11 antes de crear cualquier componente
     remember(token) {
@@ -346,16 +428,56 @@ private fun MapboxMapView(
         )
     }
 
+    var rainApplied by remember { mutableStateOf(false) }
+
     MapboxMap(
         modifier = Modifier.fillMaxSize(),
         mapViewportState = mapViewportState
-    )
+    ) {
+        if (isRainLayerVisible && !rainTemplate.isNullOrBlank()) {
+            MapEffect(rainTemplate) { mapView ->
+                mapView.mapboxMap.getStyle { style ->
+                    if (!style.styleSourceExists(RainSourceId)) {
+                        style.addSource(
+                            rasterSource(RainSourceId) {
+                                tileSize(256L)
+                                tiles(listOf(rainTemplate))
+                                maxzoom(RainMaxZoom.toLong())
+                            }
+                        )
+                    }
+                    if (!style.styleLayerExists(RainLayerId)) {
+                        style.addLayer(
+                            rasterLayer(RainLayerId, RainSourceId) {
+                                rasterOpacity(0.65)
+                            }
+                        )
+                    }
+                    rainApplied = true
+                }
+            }
+        } else if (rainApplied) {
+            MapEffect("remove-rain") { mapView ->
+                mapView.mapboxMap.getStyle { style ->
+                    if (style.styleLayerExists(RainLayerId)) {
+                        style.removeStyleLayer(RainLayerId)
+                    }
+                    if (style.styleSourceExists(RainSourceId)) {
+                        style.removeStyleSource(RainSourceId)
+                    }
+                    rainApplied = false
+                }
+            }
+        }
+    }
 }
 
 @Composable
 private fun OsmMapView(
     isFollowingUser: Boolean,
-    userLocation: UserLocation?
+    userLocation: UserLocation?,
+    isRainLayerVisible: Boolean,
+    rainTemplate: String?
 ) {
     val context = LocalContext.current
     val mapView = remember {
@@ -373,6 +495,7 @@ private fun OsmMapView(
             controller.setCenter(GeoPoint(40.41678, -3.70379)) // Madrid
         }
     }
+    var rainOverlay by remember { mutableStateOf<TilesOverlay?>(null) }
 
     LaunchedEffect(isFollowingUser, userLocation) {
         val location = userLocation ?: return@LaunchedEffect
@@ -383,9 +506,30 @@ private fun OsmMapView(
         }
     }
 
+    LaunchedEffect(isRainLayerVisible, rainTemplate) {
+        val current = rainOverlay
+        if (!isRainLayerVisible || rainTemplate.isNullOrBlank()) {
+            if (current != null) {
+                mapView.overlays.remove(current)
+                rainOverlay = null
+                mapView.invalidate()
+            }
+            return@LaunchedEffect
+        }
+
+        val newOverlay = createRainTilesOverlay(context, rainTemplate)
+        if (current != null) {
+            mapView.overlays.remove(current)
+        }
+        mapView.overlays.add(newOverlay)
+        rainOverlay = newOverlay
+        mapView.invalidate()
+    }
+
     LifecycleResumeEffect(mapView) {
         mapView.onResume()
         onPauseOrDispose {
+            rainOverlay?.let { mapView.overlays.remove(it) }
             mapView.onPause()
         }
     }
@@ -462,4 +606,31 @@ private fun rememberUserLocation(isFollowingUser: Boolean): UserLocation? {
     }
 
     return userLocation
+}
+
+private fun createRainTilesOverlay(context: Context, template: String): TilesOverlay {
+    val source = object : OnlineTileSourceBase(
+        "RainViewer",
+        0,
+        RainMaxZoom,
+        256,
+        ".png",
+        arrayOf("")
+    ) {
+        override fun getTileURLString(pMapTileIndex: Long): String {
+            val z = MapTileIndex.getZoom(pMapTileIndex).coerceAtMost(RainMaxZoom)
+            val x = MapTileIndex.getX(pMapTileIndex)
+            val y = MapTileIndex.getY(pMapTileIndex)
+            return template
+                .replace("{z}", z.toString())
+                .replace("{x}", x.toString())
+                .replace("{y}", y.toString())
+        }
+    }
+
+    val provider = MapTileProviderBasic(context, source)
+    return TilesOverlay(provider, context).apply {
+        setLoadingBackgroundColor(android.graphics.Color.TRANSPARENT)
+        setLoadingLineColor(android.graphics.Color.TRANSPARENT)
+    }
 }
