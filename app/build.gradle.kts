@@ -46,6 +46,7 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.jsoup)
     implementation("androidx.compose.material:material-icons-core")
+    implementation("androidx.compose.material:material-icons-extended")
     
     // Maps
     implementation("com.mapbox.extension:maps-compose:11.11.0")
