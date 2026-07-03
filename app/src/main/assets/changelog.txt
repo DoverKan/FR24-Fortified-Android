@@ -1,0 +1,27 @@
+[4] 1.0.4
+- Nueva sección "Mapa" en el menú lateral
+- Integración de Mapbox (opcional mediante token en configuración)
+- Soporte para OpenStreetMap como mapa gratuito por defecto
+- Actualizado motor de UI Jetpack Compose a la versión 1.11.0 (BOM 2026.04.01)
+- Mejorada la gestión de memoria y ciclo de vida en las vistas de mapas
+- Correcciones menores en la navegación y menús contextuales
+[2] 1.0.2
+- Primera versión de FR24 Fortified
+- Soporte para dispositivos Feeder y Box
+- Vista Feeder: tarjeta Monitor con datos en tiempo real de /monitor.json
+- Vista Feeder: tráfico SBS con aviones activos, velocidad y altitud
+- Puerto SBS (30003) no requerido para el tipo Feeder
+- Consola SBS con filtros por tipo de mensaje y exportación
+- Tema oscuro de aviación consistente en toda la app
+- Pantalla Acerca de con logo, beta testers y enlace web
+- Notificación de novedades al actualizar la app
+[1] 1.0.0
+- Primera versión de FR24 Fortified
+- Soporte para dispositivos Feeder y Box
+- Vista Feeder: tarjeta Monitor con datos en tiempo real de /monitor.json
+- Vista Feeder: tráfico SBS con aviones activos, velocidad y altitud
+- Puerto SBS (30003) no requerido para el tipo Feeder
+- Consola SBS con filtros por tipo de mensaje y exportación
+- Tema oscuro de aviación consistente en toda la app
+- Pantalla Acerca de con logo, beta testers y enlace web
+- Notificación de novedades al actualizar la app

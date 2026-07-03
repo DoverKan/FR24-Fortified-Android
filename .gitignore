@@ -1,0 +1,62 @@
+# Gradle files
+.gradle/
+build/
+/*/build/
+/*/intermediate/
+/*/outputs/
+/*/generated/
+
+# IntelliJ / Android Studio
+*.iml
+.idea/
+*.ipr
+*.iws
+.navigation/
+# Keep run configurations if they are safe, but usually best to ignore
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/usage.statistics.xml
+.idea/dictionaries
+.idea/libraries
+
+# Android Studio - Captures and data
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.ap_
+*.dex
+*.class
+
+# Local environment
+local.properties
+.claude/
+.junie/
+.kotlin/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Signing files - NEVER check into repository
+*.keystore
+*.jks
+*.p12
+*.pem
+
+# Firebase / Google Services
+google-services.json
+
+# Backup files
+*.bak
+*.swp
+*~
+
+# Log files
+*.log
+build_out.txt
+
+# Project specific exclusions
+/release/
+/*/release/
