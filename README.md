@@ -16,6 +16,9 @@ Visualización geográfica de aeronaves con soporte para múltiples proveedores:
 - **Mapbox (Opcional)** — Si se configura un token de Mapbox en los ajustes, la app utiliza el SDK oficial para una experiencia fluida y detallada.
 - **OpenStreetMap (Gratuito)** — Opción por defecto si no hay token configurado. Utiliza `osmdroid` para ofrecer un mapa funcional sin coste adicional.
 - **Lógica Inteligente** — Detección automática del token y cambio dinámico entre motores de mapas.
+- **Pantalla completa** — Botón dedicado para expandir el mapa ocultando la barra superior, con controles flotantes de lluvia, ubicación y salida.
+- **Centrado en mi ubicación** — Botón para centrar y seguir la posición GPS del dispositivo en tiempo real (requiere permiso de ubicación).
+- **Capa de lluvia RainViewer** — Overlay de radar meteorológico en tiempo real, disponible tanto en Mapbox como en OpenStreetMap. Limitada al zoom máximo soportado por RainViewer (7) para evitar tiles inválidos.
 - **Consistencia UI** — Barra superior con acceso rápido a configuración, acerca de y actualización, idéntica a la pantalla principal.
 
 ### Vista Feeder
@@ -95,6 +98,8 @@ app/
     │   ├── box/
     │   │   ├── BoxData.kt           # Modelos de datos del Box
     │   │   └── BoxRepository.kt     # Fetching HTTP + parsing HTML/JSON
+    │   ├── map/
+    │   │   └── RainViewerRepository.kt # Cliente HTTP para el tile template de radar de RainViewer
     │   ├── monitor/
     │   │   ├── MonitorData.kt       # Modelo de /monitor.json
     │   │   └── MonitorRepository.kt # Cliente HTTP polling cada 30s

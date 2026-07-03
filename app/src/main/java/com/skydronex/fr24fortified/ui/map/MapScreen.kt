@@ -1,6 +1,7 @@
 package com.skydronex.fr24fortified.ui.map
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
@@ -552,6 +553,7 @@ private fun hasLocationPermission(context: Context): Boolean {
     return hasFine || hasCoarse
 }
 
+@SuppressLint("MissingPermission")
 @Composable
 private fun rememberUserLocation(isFollowingUser: Boolean): UserLocation? {
     val context = LocalContext.current

@@ -1,3 +1,9 @@
+[5] 1.0.5
+- Nuevo control de pantalla completa en el mapa
+- Nuevo botón para centrar el mapa en tu ubicación actual, con seguimiento en vivo
+- Nueva capa de lluvia en tiempo real (RainViewer), disponible con Mapbox y con OpenStreetMap
+- Corregido cierre inesperado de la app al activar la capa de lluvia con Mapbox
+- Corregido el aviso "Zoom Level Not Supported" al hacer mucho zoom con la capa de lluvia activa
 [4] 1.0.4
 - Nueva sección "Mapa" en el menú lateral
 - Integración de Mapbox (opcional mediante token en configuración)
